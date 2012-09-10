@@ -479,7 +479,6 @@
                             col = 0;
                             row++;
                         }
-                        console.log(row);
                         calendar[row][col] = curDate;
                     }
                     break;
@@ -494,7 +493,6 @@
                             col = 0;
                             row++;
                         }
-                        console.log(row);
                         calendar[row][col] = curDate;
                     }
                     break;
