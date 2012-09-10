@@ -9,8 +9,8 @@
 !function ($) {
 
     var DateRangePicker = function (element, options, cb) {
-        var hasOptions = typeof options == 'object'
-        var localeObject;
+        var hasOptions = typeof options == 'object',
+            localeObject;        
 
         //state
         this.startDate = Date.today();
@@ -25,10 +25,12 @@
             fromLabel:"From",
             toLabel:"To",
             customRangeLabel:"Custom Range",
-            daysOfWeek:['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr','Sa'],
+            daysOfWeek:['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
             monthNames:['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
             firstDay:0
         };
+        this.granularity = 'm';
+        this.template = '';
 
         localeObject = this.locale;
 
@@ -58,34 +60,47 @@
             this.element.on('click', $.proxy(this.show, this));
         }
 
+        this.template = '<div class="daterangepicker dropdown-menu">' +
+                '<div class="calendar left"></div>' +
+                '<div class="calendar right"></div>' +
+                '<div class="ranges">' +
+                    '<div class="range_inputs">' +
+                    '<button class="btn btn-small btn-success" disabled="disabled">' + this.locale.applyLabel + '</button>' +
+                    '</div>' +
+                '</div>' +
+                '</div>';
+
         if (hasOptions) {
             if(typeof options.locale == 'object') {
                 $.each(localeObject, function (property, value) {
                     localeObject[property] = options.locale[property] || value;
                 });
+            }            
+
+            if (typeof options.showPreview == 'boolean') {
+                if (options.showPreview) {
+                    this.template = '<div class="daterangepicker dropdown-menu">' +
+                    '<div class="calendar left"></div>' +
+	                '<div class="calendar right"></div>' +
+	                '<div class="ranges">' +
+		                '<div class="range_inputs">' +
+		                '<div style="float: left">' +
+			                '<label for="daterangepicker_start">' + this.locale.fromLabel + '</label>' +
+			                '<input class="input-mini" type="text" name="daterangepicker_start" value="" disabled="disabled" />' +
+		                '</div>' +
+		                '<div style="float: left; padding-left: 11px">' +
+			                '<label for="daterangepicker_end">' + this.locale.toLabel + '</label>' +
+			                '<input class="input-mini" type="text" name="daterangepicker_end" value="" disabled="disabled" />' +
+		                '</div>' +
+		                '<button class="btn btn-small btn-success" disabled="disabled">' + this.locale.applyLabel + '</button>' +
+		                '</div>' +
+	                '</div>' +
+	                '</div>';
+                }
             }
-        }
-
-        var DRPTemplate = '<div class="daterangepicker dropdown-menu">' +
-                '<div class="calendar left"></div>' +
-                '<div class="calendar right"></div>' +
-                '<div class="ranges">' +
-                  '<div class="range_inputs">' +
-                    '<div style="float: left">' +
-                      '<label for="daterangepicker_start">' + this.locale.fromLabel + '</label>' +
-                      '<input class="input-mini" type="text" name="daterangepicker_start" value="" disabled="disabled" />' +
-                    '</div>' +
-                    '<div style="float: left; padding-left: 11px">' +
-                      '<label for="daterangepicker_end">' + this.locale.toLabel + '</label>' +
-                      '<input class="input-mini" type="text" name="daterangepicker_end" value="" disabled="disabled" />' +
-                    '</div>' +
-                    '<button class="btn btn-small btn-success" disabled="disabled">' + this.locale.applyLabel + '</button>' +
-                  '</div>' +
-                '</div>' +
-              '</div>';
-
+        }        
         //the date range picker
-        this.container = $(DRPTemplate).appendTo('body');
+        this.container = $(this.template).appendTo('body');
 
 
         if (hasOptions) {
@@ -121,6 +136,9 @@
             if (typeof options.endDate == 'string')
                 this.endDate = Date.parse(options.endDate, this.format);
 
+            if (typeof options.granularity == 'string' && (options.granularity === 'm' || options.granularity === 'd' || options.granularity === 'q'))
+                this.granularity = options.granularity;
+
             // update day names order to firstDay
             if (typeof options.locale == 'object') {
                 if (typeof options.locale.firstDay == 'number') {
@@ -131,7 +149,7 @@
                         iterator--;
                     }
                 }
-            }
+            }            
 
             if (typeof options.opens == 'string')
                 this.opens = options.opens;
@@ -187,8 +205,10 @@
             this.leftCalendar.month.set({ month: this.startDate.getMonth(), year: this.startDate.getFullYear() });
             this.rightCalendar.month.set({ month: this.endDate.getMonth(), year: this.endDate.getFullYear() });
 
-            this.container.find('input[name=daterangepicker_start]').val(this.startDate.toString(this.format));
-            this.container.find('input[name=daterangepicker_end]').val(this.endDate.toString(this.format));
+            if (this.showPreview) {
+                this.container.find('input[name=daterangepicker_start]').val(this.startDate.toString(this.format));
+                this.container.find('input[name=daterangepicker_end]').val(this.endDate.toString(this.format));
+            }
 
             if (this.startDate.equals(this.endDate) || this.startDate.isBefore(this.endDate)) {
                 this.container.find('button').removeAttr('disabled');
@@ -200,9 +220,9 @@
         updateFromControl: function () {
             if (!this.element.is('input')) return;
 
-            var dateString = this.element.val().split(" - ");
-            var start = Date.parseExact(dateString[0], this.format);
-            var end = Date.parseExact(dateString[1], this.format);
+            var dateString = this.element.val().split(" - "),
+                start = Date.parseExact(dateString[0], this.format),
+                end = Date.parseExact(dateString[1], this.format);
 
             if (start == null || end == null) return;
             if (end.isBefore(start)) return;
@@ -268,8 +288,10 @@
                 this.updateView();
             } else {
                 var dates = this.ranges[label];
-                this.container.find('input[name=daterangepicker_start]').val(dates[0].toString(this.format));
-                this.container.find('input[name=daterangepicker_end]').val(dates[1].toString(this.format));
+                if (this.showPreview) {
+                    this.container.find('input[name=daterangepicker_start]').val(dates[0].toString(this.format));
+                    this.container.find('input[name=daterangepicker_end]').val(dates[1].toString(this.format));
+                }
             }
         },
 
@@ -297,9 +319,25 @@
         clickPrev: function (e) {
             var cal = $(e.target).parents('.calendar');
             if (cal.hasClass('left')) {
-                this.leftCalendar.month.add({ months: -1 });
+                switch (this.granularity) {
+                    case 'm':
+                    case 'q':
+                        this.leftCalendar.month.add({ years: -1 });
+                        break;
+                    default:
+                        this.leftCalendar.month.add({ months: -1 });
+                        break;
+                }
             } else {
-                this.rightCalendar.month.add({ months: -1 });
+                switch (this.granularity) {
+                    case 'm':
+                    case 'q':
+                        this.rightCalendar.month.add({ years: -1 });                   
+                        break;
+                    default:
+                        this.rightCalendar.month.add({ months: -1 });
+                        break;
+                }
             }
             this.updateCalendars();
         },
@@ -307,33 +345,50 @@
         clickNext: function (e) {
             var cal = $(e.target).parents('.calendar');
             if (cal.hasClass('left')) {
-                this.leftCalendar.month.add({ months: 1 });
+                switch (this.granularity) {
+                    case 'm':
+                    case 'q':
+                        this.leftCalendar.month.add({ years: 1 });
+                        break;
+                    default:
+                        this.leftCalendar.month.add({ months: 1 });
+                        break;
+                }
             } else {
-                this.rightCalendar.month.add({ months: 1 });
+                switch (this.granularity) {
+                    case 'm':
+                    case 'q':
+                        this.rightCalendar.month.add({ years: 1 });
+                        break;
+                    default:
+                        this.rightCalendar.month.add({ months: 1 });
+                        break;
+                }
             }
             this.updateCalendars();
         },
 
         enterDate: function (e) {
 
-            var title = $(e.target).attr('title');
-            var row = title.substr(1, 1);
-            var col = title.substr(3, 1);
-            var cal = $(e.target).parents('.calendar');
+            var title = $(e.target).attr('data-title'),
+                row = title.substr(1, 1),
+                col = title.substr(3, 1),
+                cal = $(e.target).parents('.calendar');
 
-            if (cal.hasClass('left')) {
-                this.container.find('input[name=daterangepicker_start]').val(this.leftCalendar.calendar[row][col].toString(this.format));
-            } else {
-                this.container.find('input[name=daterangepicker_end]').val(this.rightCalendar.calendar[row][col].toString(this.format));
+            if (this.showPreview) {
+                if (cal.hasClass('left')) {
+                    this.container.find('input[name=daterangepicker_start]').val(this.leftCalendar.calendar[row][col].toString(this.format));
+                } else {
+                    this.container.find('input[name=daterangepicker_end]').val(this.rightCalendar.calendar[row][col].toString(this.format));
+                }
             }
-
         },
 
         clickDate: function (e) {
-            var title = $(e.target).attr('title');
-            var row = title.substr(1, 1);
-            var col = title.substr(3, 1);
-            var cal = $(e.target).parents('.calendar');
+            var title = $(e.target).attr('data-title'),
+                row = title.substr(1, 1),
+                col = title.substr(3, 1),
+                cal = $(e.target).parents('.calendar');
 
             if (cal.hasClass('left')) {
                 startDate = this.leftCalendar.calendar[row][col];
@@ -341,6 +396,17 @@
             } else {
                 startDate = this.startDate;
                 endDate = this.rightCalendar.calendar[row][col];
+            }
+
+            switch (this.granularity) {
+                case 'q':
+                    endDate = endDate.add(2).month().moveToLastDayOfMonth();
+                    break;
+                case 'm':
+                    endDate = endDate.moveToLastDayOfMonth();
+                    break;
+                default:
+                    break
             }
 
             cal.find('td').removeClass('active');
@@ -369,72 +435,162 @@
 
         buildCalendar: function (month, year) {
 
-            var firstDay = Date.today().set({ day: 1, month: month, year: year });
-            var lastMonth = firstDay.clone().add(-1).day().getMonth();
-            var lastYear = firstDay.clone().add(-1).day().getFullYear();
-
-            var daysInMonth = Date.getDaysInMonth(year, month);
-            var daysInLastMonth = Date.getDaysInMonth(lastYear, lastMonth);
-
-            var dayOfWeek = firstDay.getDay();
-
-            //initialize a 6 rows x 7 columns array for the calendar
             var calendar = Array();
-            for (var i = 0; i < 6; i++) {
-                calendar[i] = Array();
+
+            switch(this.granularity) {
+                case 'd': // date picker
+                    var firstDay = Date.today().set({ day: 1, month: month, year: year }),
+                        lastMonth = firstDay.clone().add(-1).day().getMonth(),
+                        lastYear = firstDay.clone().add(-1).day().getFullYear(),
+
+                        daysInMonth = Date.getDaysInMonth(year, month),
+                        daysInLastMonth = Date.getDaysInMonth(lastYear, lastMonth),
+
+                        dayOfWeek = firstDay.getDay();
+
+                    //initialize a 6 rows x 7 columns array for the calendar            
+                    for (var i = 0; i < 6; i++) {
+                        calendar[i] = Array();
+                    }
+
+                    //populate the calendar with date objects
+                    var startDay = daysInLastMonth - dayOfWeek + this.locale.firstDay + 1;
+                    if (dayOfWeek == 0)
+                        startDay = daysInLastMonth - 6 + this.locale.firstDay;
+
+                    var curDate = Date.today().set({ day: startDay, month: lastMonth, year: lastYear });
+                    for (var i = 0, col = 0, row = 0; i < 42; i++, col++, curDate = curDate.clone().add(1).day()) {
+                        if (i > 0 && col % 7 == 0) {
+                            col = 0;
+                            row++;
+                        }
+                        calendar[row][col] = curDate;
+                    }
+                    break;
+                case 'm': // month picker
+                    //initialize a 3 rows x 4 column array for the calendar
+                    for (var i = 0; i < 3; i++) {
+                        calendar[i] = Array();
+                    }
+                
+                    var curDate = Date.today().set({ day: 1, month: 0, year: year });
+                    for (var i = 0, col = 0, row = 0; i < 12; i++, col++, curDate = curDate.clone().add(1).month()) {
+                        if (i > 0 && col % 4 == 0) {
+                            col = 0;
+                            row++;
+                        }
+                        console.log(row);
+                        calendar[row][col] = curDate;
+                    }
+                    break;
+                case 'q': // quarter picker
+                    for (var i = 0; i < 2; i++) {
+                        calendar[i] = Array();
+                    }
+
+                    var curDate = Date.today().set({ day: 1, month: 0, year: year });
+                    for (var i = 0, col = 0, row = 0; i < 4; i++, col++, curDate = curDate.clone().add(3).month()) {
+                        if (i > 0 && col % 2 == 0) {
+                            col = 0;
+                            row++;
+                        }
+                        console.log(row);
+                        calendar[row][col] = curDate;
+                    }
+                    break;
+                default:
+                    break;
             }
-
-            //populate the calendar with date objects
-            var startDay = daysInLastMonth - dayOfWeek + this.locale.firstDay + 1;
-            if (dayOfWeek == 0)
-                startDay = daysInLastMonth - 6 + this.locale.firstDay;
-
-            var curDate = Date.today().set({ day: startDay, month: lastMonth, year: lastYear });
-            for (var i = 0, col = 0, row = 0; i < 42; i++, col++, curDate = curDate.clone().add(1).day()) {
-                if (i > 0 && col % 7 == 0) {
-                    col = 0;
-                    row++;
-                }
-                calendar[row][col] = curDate;
-            }
-
             return calendar;
 
         },
 
         renderCalendar: function (calendar, selected) {
 
-            var html = '<table class="table-condensed">';
-            html += '<thead>';
-            html += '<tr>';
-            html += '<th class="prev"><i class="icon-arrow-left"></i></th>';
-            html += '<th colspan="5">' + calendar[1][1].toString("MMMM yyyy") + '</th>';
-            html += '<th class="next"><i class="icon-arrow-right"></i></th>';
-            html += '</tr>';
-            html += '<tr>';
+            var html = ''
+            switch(this.granularity) {
+                case 'd': // date picker
+                    html = '<table class="table-condensed">';
+                    html += '<thead>';
+                    html += '<tr>';
+                    html += '<th class="prev"><i class="icon-arrow-left"></i></th>';
+                    html += '<th colspan="5">' + calendar[1][1].toString("MMMM yyyy") + '</th>';
+                    html += '<th class="next"><i class="icon-arrow-right"></i></th>';
+                    html += '</tr>';
+                    html += '<tr>';
 
-            $.each(this.locale.daysOfWeek, function (index, dayOfWeek) {
-                html += '<th>' + dayOfWeek + '</th>';
-            });
+                    $.each(this.locale.daysOfWeek, function (index, dayOfWeek) {
+                        html += '<th>' + dayOfWeek + '</th>';
+                    });
 
-            html += '</tr>';
-            html += '</thead>';
-            html += '<tbody>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
 
-            for (var row = 0; row < 6; row++) {
-                html += '<tr>';
-                for (var col = 0; col < 7; col++) {
-                    var cname = (calendar[row][col].getMonth() == calendar[1][1].getMonth()) ? '' : 'off';
-                    if (calendar[row][col].equals(selected))
-                        cname = 'active';
-                    var title = 'r' + row + 'c' + col;
-                    html += '<td class="' + cname + '" title="' + title + '">' + calendar[row][col].getDate() + '</td>';
-                }
-                html += '</tr>';
+                    for (var row = 0; row < 6; row++) {
+                        html += '<tr>';
+                        for (var col = 0; col < 7; col++) {
+                            var cname = (calendar[row][col].getMonth() == calendar[1][1].getMonth()) ? '' : 'off';
+                            if (calendar[row][col].equals(selected))
+                                cname = 'active';
+                            var title = 'r' + row + 'c' + col;
+                            html += '<td class="' + cname + '" data-title="' + title + '">' + calendar[row][col].getDate() + '</td>';
+                        }
+                        html += '</tr>';
+                    }
+
+                    html += '</tbody>';
+                    html += '</table>';
+                    break;
+                case 'm': // month picker
+                    html = '<table class="table-condensed">';
+                    html += '<thead>';
+                    html += '<tr>';
+                    html += '<th class="prev"><i class="icon-arrow-left"></i></th>';
+                    html += '<th colspan="2">' + calendar[1][1].toString("yyyy") + '</th>';
+                    html += '<th class="next"><i class="icon-arrow-right"></i></th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+                    // tbody goes here
+                    for (var row = 0; row < 3; row++) {
+                        html += '<tr>';
+                        for (var col = 0; col < 4; col++) {
+                            var title = 'r' + row + 'c' + col;
+                            html += '<td class="" data-title="' + title + '">' + this.locale.monthNames[(4 * row + col)].substr(0, 3) + '</td>';
+                        }
+                        html += '</tr>';
+                    }
+
+                    html += '</tbody>';
+                    html += '</table>';
+                    break;                
+                case 'q': // quarter picker
+                    html = '<table class="table-condensed">';
+                    html += '<thead>';
+                    html += '<tr>';
+                    html += '<th class="prev"><i class="icon-arrow-left"></i></th>';
+                    html += '<th colspan="2">' + calendar[1][1].toString("yyyy") + '</th>';
+                    html += '<th class="next"><i class="icon-arrow-right"></i></th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+                    // tbody goes here
+                    for (var row = 0; row < 2; row++) {
+                        html += '<tr>';
+                        for (var col = 1; col < 3; col++) {
+                            var title = 'r' + row + 'c' + (col-1);
+                            html += '<td colspan="2" class="" data-title="' + title + '">Q' + (2 * row + col) + '</td>';
+                        }
+                        html += '</tr>';
+                    }
+
+                    html += '</tbody>';
+                    html += '</table>';
+                    break;
+                default:
+                    break;
             }
-
-            html += '</tbody>';
-            html += '</table>';
 
             return html;
 
